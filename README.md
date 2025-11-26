@@ -43,10 +43,6 @@ pod install
 cd ..
 ```
 
-### 3. Android Setup
-
-Ensure you have Android SDK and build tools installed through Android Studio.
-
 ## Configuration
 
 ### 1. Agora Configuration
@@ -66,10 +62,27 @@ const token = 'YOUR_TOKEN'; // Optional: Add token for production
 The project includes FaceUnity SDK integration:
 
 - **iOS**: FaceUnity frameworks are located in `ios/FaceUnityFiles/` (If you are adding your own FaceUnity resources and frameworks, make sure to add it directly to Xcode > xcworkspace )
-- **Android**: FaceUnity resources are in `android/app/src/main/assets/`
+- **Android**: FaceUnity resources are in `android/app/src/main/assets/` and the native library AAR in `android/libs/`
 - **Authentication**: Update the `FACEUNITY_AUTHPACK` array in `App.tsx` with your FaceUnity license
 
-> **⚠️ IMPORTANT**: FaceUnity licenses are tied to specific package names/bundle IDs. You MUST update your app's package/bundle ID to match your FaceUnity license before the SDK will work.
+#### Android-Specific Requirements
+
+**CRITICAL**: For Android, the FaceUnity extension must be explicitly loaded:
+
+```typescript
+// In App.tsx - Required for Android only
+if (Platform.OS === 'android') {
+  const result = await agoraEngine.loadExtensionProvider('AgoraFaceUnityExtension');
+  console.log('Android FaceUnity extension load result:', result);
+}
+```
+
+This step is essential - without `loadExtensionProvider()`, Android will return error code -3 (extension not found).
+
+> **⚠️ IMPORTANT**: 
+> - FaceUnity licenses are tied to specific package names/bundle IDs. You MUST update your app's package/bundle ID to match your FaceUnity license before the SDK will work.
+> - Android requires the `android/libs/` folder with the FaceUnity AAR file
+> - Android requires explicit `loadExtensionProvider()` call before using FaceUnity features
 
 ### 3. Update Package Name/Bundle ID
 
@@ -103,13 +116,14 @@ android {
 ```
 ├── App.tsx                 # Main application component
 ├── utils/                  # Utility functions
-│   ├── index.ts           # Resource path utilities
+│   ├── index.ts           # Resource path utilities & asset copying for Android
 │   ├── log.ts             # (not used) Logging utilities
 │   └── permissions.ts     # (not used)Permission handling
 ├── ios/
 │   └── FaceUnityFiles/    # FaceUnity iOS frameworks and resources (If you are adding your own FaceUnity resources and frameworks, make sure to add it directly to Xcode > xcworkspace)
-└── android/
-    └── app/src/main/assets/ # FaceUnity Android resources
+├── android/
+│   ├── libs/              # FaceUnity AAR library (extension_aar-release.aar)
+│   └── app/src/main/assets/ # FaceUnity Android resources (bundles, models, etc.)
 ```
 
 ## Running the Application
@@ -167,29 +181,63 @@ npm run android
 
 ### Common Issues
 
-**1. FaceUnity Not Loading**
-- Verify your FaceUnity license is valid
+**1. FaceUnity Not Loading (Android)**
+- **Error -3**: Extension not found
+  - Ensure `extension_aar-release.aar` is in `android/libs/` folder
+  - Verify `loadExtensionProvider('AgoraFaceUnityExtension')` is called before using FaceUnity
+  - Check that your FaceUnity license matches the app's `applicationId`
+- **Error -1**: AI model loading failed
+  - Check that FaceUnity assets are properly copied from APK to device storage
+  - Verify the `getAbsolutePath()` function in `utils/index.ts` is working correctly
+
+**2. FaceUnity Not Loading (General)**
+- Verify your FaceUnity license is valid and not expired
 - Check that all bundle files are properly included in your app bundle
+- Ensure package/bundle ID matches your FaceUnity license
 - Review console logs for specific error messages
 
-**2. Video Not Showing**
+**3. Video Not Showing**
 - Ensure camera permissions are granted
 - Check if Agora App ID is correctly configured
 - Verify network connectivity
 
-**3. iOS Build Errors**
+**4. iOS Build Errors**
 - Run `cd ios && pod install` to update dependencies
 - Clean build folder: `cd ios && xcodebuild clean`
 
-**4. Android Build Errors**
+**5. Android Build Errors**
+- **AAR not found**: Ensure `android/libs/` folder exists with the FaceUnity AAR
+- **Gradle sync issues**: Check `android/build.gradle` has correct `flatDir` repository configuration
 - Clean gradle cache: `cd android && ./gradlew clean`
 - Ensure Android SDK tools are up to date
+
+### Android-Specific Troubleshooting
+
+**Missing FaceUnity AAR Library**:
+```bash
+# Verify the AAR file exists
+ls -la android/libs/extension_aar-release.aar
+```
+
+**Gradle Configuration Issues**:
+Check these files have correct configuration:
+- `android/build.gradle` - should have `flatDir` repository pointing to `rootProject.file('libs')`
+- `android/app/build.gradle` - should have the AAR dependency declared
+
+**Asset Copying Issues**:
+FaceUnity requires assets to be copied from APK to device storage on Android. Check logs for:
+```
+Copying asset: model/ai_face_processor.bundle to /storage/...
+Successfully copied: model/ai_face_processor.bundle
+```
 
 ### Debugging
 
 Enable debug logs by checking console output. The app uses prefixed logging:
 - `Bacs` prefix for general app logs
 - Look for FaceUnity-specific errors in native logs
+- Success logs show: `Bacs FaceUnity Ready!` when all components load successfully
+- Android logs: Use `adb logcat | grep ReactNativeJS` to see React Native console logs
 
 ## Dependencies
 
@@ -228,12 +276,28 @@ This project is for demonstration purposes. Please ensure you have proper licens
 - **FaceUnity Documentation**: Contact FaceUnity support
 - **React Native**: https://reactnative.dev/docs/
 
+## Important Integration Notes
+
+### Android Integration Summary
+1. **Required Files**:
+   - `android/libs/extension_aar-release.aar` - FaceUnity native libraries
+   - Assets in `android/app/src/main/assets/` - FaceUnity resources
+   
+2. **Required Code**:
+   - `loadExtensionProvider('AgoraFaceUnityExtension')` - Must call on Android before using FaceUnity
+   - Asset copying via `getAbsolutePath()` - Converts APK assets to absolute paths for FaceUnity
+
+3. **Gradle Configuration**:
+   - `flatDir` repository in `android/build.gradle`
+   - AAR dependency in `android/app/build.gradle`
+
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test on both iOS and Android
+4. Test on both iOS and Android (especially Android FaceUnity integration)
 5. Submit a pull request
 
 ---
