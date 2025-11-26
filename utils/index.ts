@@ -4,28 +4,39 @@ import {
   MainBundlePath,
   copyFileAssets,
   exists,
+  mkdir,
 } from 'react-native-fs';
 
 
 
-export function getResourcePath(fileName: string): string {
+export async function getAbsolutePath(fileName: string): Promise<string> {
   if (Platform.OS === 'android') {
-    return `/assets/${fileName}`;
-  }
-  return `${MainBundlePath}/${fileName}`;
-}
-
-export async function getAbsolutePath(filePath: string): Promise<string> {
-  if (Platform.OS === 'android') {
-    if (filePath.startsWith('/assets/')) {
-      // const fileName = filePath;
-      const fileName = filePath.replace('/assets/', '');
-      const destPath = `${ExternalCachesDirectoryPath}/${fileName}`;
+    // If already an absolute path, return as-is
+    if (fileName.startsWith('/')) {
+      return fileName;
+    }
+    
+    const destPath = `${ExternalCachesDirectoryPath}/${fileName}`;
+    
+    try {
       if (!(await exists(destPath))) {
+        // Ensure directory exists for nested paths
+        const dirPath = destPath.substring(0, destPath.lastIndexOf('/'));
+        if (!(await exists(dirPath))) {
+          await mkdir(dirPath);
+        }
+        
+        console.log(`Copying asset: ${fileName} to ${destPath}`);
         await copyFileAssets(fileName, destPath);
+        console.log(`Successfully copied: ${fileName}`);
+      } else {
+        console.log(`Asset already exists: ${destPath}`);
       }
       return destPath;
+    } catch (error) {
+      console.error(`Failed to copy asset ${fileName}:`, error);
+      throw error;
     }
   }
-  return filePath;
+  return `${MainBundlePath}/${fileName}`;
 }

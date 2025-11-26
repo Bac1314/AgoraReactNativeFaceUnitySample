@@ -21,7 +21,7 @@ import {
   ExtensionContext,
 } from 'react-native-agora';
 
-import {getResourcePath } from './utils';
+import {getAbsolutePath } from './utils';
 
 const appId = 'd5af82b4b85e4838b2caec2a84e71cf3'; 
 const channelName = 'channel_bac';
@@ -38,6 +38,7 @@ const App = () => {
   
   // FaceUnity State
   const [faceUnityEnabled, setFaceUnityEnabled] = useState(false);
+  const [faceUnityInitialized, setFaceUnityInitialized] = useState(false);
   const [isBeautyOn, setIsBeautyOn] = useState(false);
   const [beautyHandle, setBeautyHandle] = useState<string | undefined>();
   const [isStickerOn, setIsStickerOn] = useState(false);
@@ -111,6 +112,13 @@ const App = () => {
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
       });
 
+
+      if (Platform.OS === 'android') {
+        // Load FaceUnity Extension Provider on Android 
+        const result = await agoraEngine.loadExtensionProvider('AgoraFaceUnityExtension');
+        console.log('Bacs Android FaceUnity extension loadExtension result:', result);
+      }
+
       // 4. FACEUNITY: Enable Extension BEFORE enabling video
       console.log('Bacs Enabling FaceUnity...');
       const result = await agoraEngine.enableExtension('FaceUnity', 'Effect', true);
@@ -139,6 +147,7 @@ const App = () => {
     
     try {
       faceUnityInitializedRef.current = true;
+      setFaceUnityInitialized(true);
       console.log('Bacs Loading FaceUnity Resources...');
 
       // 1. Setup Auth
@@ -149,6 +158,7 @@ const App = () => {
       if (setupResult !== 0) {
         console.error('Bacs FaceUnity setup failed with code:', setupResult);
         faceUnityInitializedRef.current = false;
+        setFaceUnityInitialized(false);
         return;
       }else { 
         console.log('Bacs FaceUnity setup success with result:', setupResult);
@@ -163,14 +173,15 @@ const App = () => {
       ];
 
       for (const model of models) {
-        const path = getResourcePath(model.name); /// : `model/${model.name}`;
+        const absolutePath = Platform.OS === 'ios' ? await getAbsolutePath(model.name) : await getAbsolutePath(`model/${model.name}`);
         const loadResult = await engine.setExtensionProperty('FaceUnity', 'Effect', 'fuLoadAIModelFromPackage',
-          JSON.stringify({ data: path, type: model.type })
+          JSON.stringify({ data: absolutePath, type: model.type })
         );
 
         if (loadResult !== 0) {
-          console.error('Bacs FaceUnity fuLoadAIModelFromPackage ${model.name} failed with code:', loadResult);
+          console.error('Bacs FaceUnity fuLoadAIModelFromPackage ' + model.name + ' failed with code:', loadResult);
           faceUnityInitializedRef.current = false;
+          setFaceUnityInitialized(false);
           return;
         }else { 
           console.log('Bacs FaceUnity fuLoadAIModelFromPackage ${model.name} success result:', loadResult);
@@ -178,37 +189,41 @@ const App = () => {
       }
 
       // 3. Create AI Type
-      const aiTypePath =  Platform.OS === 'ios' ? getResourcePath('aitype.bundle') : getResourcePath('others/aitype.bundle');// getResourcePath('aitype.bundle'); 
-      const aiTypePathResult = await engine.setExtensionProperty('FaceUnity', 'Effect', 'fuCreateItemFromPackage',
+      const aiTypePath = Platform.OS === 'ios' ? await getAbsolutePath('aitype.bundle') : await getAbsolutePath('others/aitype.bundle'); 
+      const aiTypeResult = await engine.setExtensionProperty('FaceUnity', 'Effect', 'fuCreateItemFromPackage',
         JSON.stringify({ data: aiTypePath })
       );
-      if (aiTypePathResult !== 0) {
-        console.error('Bacs FaceUnity load aitype failed with code:', aiTypePathResult);
+      if (aiTypeResult !== 0) {
+        console.error('Bacs FaceUnity load aitype failed with code:', aiTypeResult);
         faceUnityInitializedRef.current = false;
+        setFaceUnityInitialized(false);
         return;
       }else { 
-        console.log('Bacs FaceUnity load aitype success result:', aiTypePathResult);
+        console.log('Bacs FaceUnity load aitype success result:', aiTypeResult);
       }
 
       // 4. Load Beauty Item
-      const beautyPath = Platform.OS === 'ios' ? getResourcePath('face_beautification.bundle') : getResourcePath('graphics/face_beautification.bundle'); //getResourcePath('face_beautification.bundle');
-      const beautyPathResult = await engine.setExtensionProperty('FaceUnity', 'Effect', 'fuCreateItemFromPackage',
-        JSON.stringify({ data: beautyPath })
+      const beautyAbsolutePath = Platform.OS === 'ios' ? await getAbsolutePath('face_beautification.bundle') : await getAbsolutePath('graphics/face_beautification.bundle');
+      const beautyResult = await engine.setExtensionProperty('FaceUnity', 'Effect', 'fuCreateItemFromPackage',
+        JSON.stringify({ data: beautyAbsolutePath })
       );
 
-      if (beautyPathResult !== 0) {
-        console.error('Bacs FaceUnity load beautyPathResult failed with code:', beautyPathResult);
+      if (beautyResult !== 0) {
+        console.error('Bacs FaceUnity load beauty failed with code:', beautyResult);
         faceUnityInitializedRef.current = false;
+        setFaceUnityInitialized(false);
         return;
       }else { 
-        console.log('Bacs FaceUnity load beautyPathResult success result:', beautyPathResult);
+        console.log('Bacs FaceUnity load beauty success result:', beautyResult);
       }
 
       // // 5. Check if sticker exists ( no need to load, it will be loaded then you enable it)
-      const stickerPath = Platform.OS === 'ios' ? getResourcePath('cat_sparks.bundle') : getResourcePath('effect/normal/cat_sparks.bundle');; // Using cat_sparks sticker from resources
+      // const stickerFileName = Platform.OS === 'ios' ? 'cat_sparks.bundle' : 'effect/normal/cat_sparks.bundle'; // Using cat_sparks sticker from resources
+      const stickerPath = Platform.OS === 'ios' ? await getAbsolutePath('cat_sparks.bundle') : await getAbsolutePath('effect/normal/cat_sparks.bundle'); // Using cat_sparks sticker from resources
+      //await getAbsolutePath(stickerPath); // Pre-copy the asset to ensure it exists
 
       setFaceUnityEnabled(true);
-      setBeautyHandle(beautyPath);
+      setBeautyHandle(beautyAbsolutePath);
       setStickerHandle(stickerPath);
       console.log('Bacs FaceUnity Ready!');
       
@@ -216,6 +231,7 @@ const App = () => {
     } catch (e) {
       console.error('Bacs Failed to load FaceUnity resources', e);
       faceUnityInitializedRef.current = false;
+      setFaceUnityInitialized(false);
     }
   };
 
@@ -267,9 +283,10 @@ const App = () => {
     
     if (nextState) {
       // Enable sticker 
+      const stickerAbsolutePath = await getAbsolutePath(stickerHandle);
       const result = await engine.setExtensionProperty('FaceUnity', 'Effect', 'fuCreateItemFromPackage',
         JSON.stringify({
-          data: stickerHandle
+          data: stickerAbsolutePath
         })
       );
       console.log('Bacs Sticker enabled, result:', result);
@@ -284,9 +301,6 @@ const App = () => {
     }
 
     setIsStickerOn(nextState);
-
-      //     setStickerHandle(stickerPath);
-      // setStickerItemHandle(stickerResult);
   };
 
   const getStatusColor = (status: 'disconnected' | 'connecting' | 'connected') => {
@@ -299,7 +313,7 @@ const App = () => {
   };
 
   const join = async () => {
-    console.log("Bacs join Channel is faceUnityInitialized loaded:", faceUnityInitializedRef.current);
+    console.log("Bacs join Channel is faceUnityInitialized loaded:", faceUnityInitialized);
     if (isJoined) return;
     try {
       setConnectionStatus('connecting');

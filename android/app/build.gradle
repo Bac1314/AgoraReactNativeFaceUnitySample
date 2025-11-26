@@ -54,22 +54,15 @@ android {
     }
 }
 
-// Tell Gradle to look in libs/ for AARs
-repositories {
-    flatDir {
-        dirs 'libs'
-    }
-}
 
 dependencies {
-    // Local AAR dependency
+    implementation fileTree(dir: "${rootProject.projectDir}/libs", include: ["*.aar"])
+
+    // // FaceUnity SDK - explicit dependency declaration
     // implementation(name: 'extension_aar-release', ext: 'aar')
-
-    // Fallback for any other local libraries
-    // implementation fileTree(dir: "libs", include: ["*.jar", "*.aar"])
-
-    implementation(name: 'extension_aar-release', ext: 'aar')
-    implementation fileTree(dir: "libs", include: ["*.jar"])
+    
+    // // Fallback for any other local libraries
+    // implementation fileTree(dir: "libs", include: ["*.jar"])
 
     // React Native dependencies
     implementation("com.facebook.react:react-android")
