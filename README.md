@@ -109,7 +109,7 @@ android {
 1. Update `package.json` name field (optional but recommended)
 2. Update `app.json` name field if you're using it
 
-> **Note**: You need a valid FaceUnity license to use the beauty and AR features. Contact FaceUnity for licensing information and ensure your license matches your app's package/bundle ID.
+> **Note**: You need a valid FaceUnity license to use the beauty and AR features. Contact Agora for licensing information and ensure your license matches your app's package/bundle ID.
 
 ## File Structure
 
@@ -268,12 +268,12 @@ Enable debug logs by checking console output. The app uses prefixed logging:
 
 This project is for demonstration purposes. Please ensure you have proper licenses for:
 - Agora SDK (check Agora pricing)
-- FaceUnity SDK (contact FaceUnity for licensing)
+- FaceUnity SDK (contact Agora for licensing)
 
 ## Support
 
 - **Agora Documentation**: https://docs.agora.io/
-- **FaceUnity Documentation**: Contact FaceUnity support
+- **FaceUnity Documentation**: Contact Agora support
 - **React Native**: https://reactnative.dev/docs/
 
 ## Important Integration Notes
@@ -285,8 +285,6 @@ This project is for demonstration purposes. Please ensure you have proper licens
    
 2. **Required Code**:
    - `loadExtensionProvider('AgoraFaceUnityExtension')` - Must call on Android before using FaceUnity
-   - Asset copying via `getAbsolutePath()` - Converts APK assets to absolute paths for FaceUnity
-
 3. **Gradle Configuration**:
    - `flatDir` repository in `android/build.gradle`
    - AAR dependency in `android/app/build.gradle`
@@ -302,5 +300,5 @@ This project is for demonstration purposes. Please ensure you have proper licens
 
 ---
 
-**Note**: You need a valid FaceUnity license to use the beauty and AR features. Contact FaceUnity for licensing information and ensure your license matches your app's package/bundle ID.
+**Note**: You need a valid FaceUnity license to use the beauty and AR features. Contact Agora for licensing information and ensure your license matches your app's package/bundle ID.
  
